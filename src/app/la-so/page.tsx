@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useMemo } from "react";
+import { Suspense, useEffect, useMemo } from "react";
 import { LaSoGrid } from "@/components/tuvi/LaSoGrid";
 import { lapLaSo } from "@/lib/tuvi/lapLaSo";
+import { luuLichSu } from "@/lib/tuvi/lichSu";
 
 export default function LaSoPage() {
   return (
@@ -32,6 +33,11 @@ function LaSoContent() {
       return null;
     }
   }, [ngay, thang, nam, gio, gioiTinh]);
+
+  useEffect(() => {
+    if (!laSo) return;
+    luuLichSu({ ten: hoTen ?? "", ngay, thang, nam, gio, gioiTinh });
+  }, [laSo, hoTen, ngay, thang, nam, gio, gioiTinh]);
 
   if (!laSo) {
     return (

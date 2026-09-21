@@ -123,7 +123,6 @@ function getLeapMonthOffset(a11: number, timeZone: number): number {
   let last: number;
   let i = 1;
   let arc = getSunLongitude(getNewMoonDay(k + i, timeZone), timeZone);
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     last = arc;
     i += 1;

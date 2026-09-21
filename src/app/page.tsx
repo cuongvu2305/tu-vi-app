@@ -1,4 +1,5 @@
 import { BirthForm } from "@/components/tuvi/BirthForm";
+import { LichSuXem } from "@/components/tuvi/LichSuXem";
 
 export default function Home() {
   return (
@@ -12,8 +13,9 @@ export default function Home() {
           cung.
         </p>
       </div>
-      <div className="mt-8 w-full flex justify-center">
+      <div className="mt-8 flex w-full flex-col items-center gap-8">
         <BirthForm />
+        <LichSuXem />
       </div>
     </div>
   );
