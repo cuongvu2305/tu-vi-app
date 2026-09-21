@@ -1,0 +1,69 @@
+"use client";
+
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useMemo } from "react";
+import { LaSoGrid } from "@/components/tuvi/LaSoGrid";
+import { lapLaSo } from "@/lib/tuvi/lapLaSo";
+
+export default function LaSoPage() {
+  return (
+    <Suspense>
+      <LaSoContent />
+    </Suspense>
+  );
+}
+
+function LaSoContent() {
+  const searchParams = useSearchParams();
+
+  const ngay = Number(searchParams.get("ngay"));
+  const thang = Number(searchParams.get("thang"));
+  const nam = Number(searchParams.get("nam"));
+  const gio = Number(searchParams.get("gio") ?? "7");
+  const gioiTinh = searchParams.get("gioiTinh") === "-1" ? -1 : 1;
+  const hoTen = searchParams.get("ten") ?? undefined;
+
+  const laSo = useMemo(() => {
+    if (!ngay || !thang || !nam) return null;
+    try {
+      return lapLaSo({ ngay, thang, nam, gioSinh: gio, gioiTinh, duongLich: true, timeZone: 7 });
+    } catch {
+      return null;
+    }
+  }, [ngay, thang, nam, gio, gioiTinh]);
+
+  if (!laSo) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-16 text-center">
+        <p className="text-zinc-600 dark:text-zinc-400">
+          Thông tin ngày sinh không hợp lệ hoặc chưa được cung cấp.
+        </p>
+        <Link href="/" className="text-amber-600 underline hover:text-amber-700">
+          Quay lại nhập thông tin
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-1 flex-col items-center gap-6 px-4 py-10">
+      <div className="flex w-full max-w-3xl flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
+          Lá số Tử Vi{hoTen ? ` — ${hoTen}` : ""}
+        </h1>
+        <Link
+          href="/"
+          className="shrink-0 text-sm text-amber-600 underline hover:text-amber-700"
+        >
+          Lập lá số khác
+        </Link>
+      </div>
+      <p className="text-xs text-zinc-500">
+        Chạm vào từng cung để xem luận giải chi tiết. (M) Miếu, (V) Vượng, (Đ) Đắc, (B) Bình, (H)
+        Hãm.
+      </p>
+      <LaSoGrid laSo={laSo} hoTen={hoTen} />
+    </div>
+  );
+}
