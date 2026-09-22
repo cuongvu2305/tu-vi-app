@@ -5,6 +5,12 @@
  *
  * Cách áp dụng: lấy toàn bộ sao thuộc tam phương tứ chính của cung đại vận
  * (chính cung, cung xung chiếu và hai cung tam hợp), rồi kiểm tra từng bộ sao.
+ * Ba ràng buộc thêm để kết quả nhất quán:
+ * - Nhóm sao đầu tiên của mỗi bộ (nhóm sao chủ) phải có ít nhất một sao nằm ngay
+ *   cung đại vận. Nếu không, các vận cùng tam hợp (cách nhau 40 năm) chia chung
+ *   3/4 số cung nên sẽ ra lời luận giống hệt nhau.
+ * - Mỗi chủ đề chỉ xét khi phần lớn thời gian của vận nằm trong khung tuổi phù hợp.
+ * - Tốt và xấu cùng một chủ đề được gộp thành một câu.
  *
  * Lưu ý: chỉ mang tính tham khảo. Mục đoán hạn tang/chết trong giáo trình được
  * cố ý KHÔNG đưa vào ứng dụng.
@@ -35,8 +41,19 @@ export const TEN_CHU_DE: Record<ChuDe, string> = {
   conCai: "Con cái",
 };
 
-/** Đại vận chỉ được xét chủ đề hôn nhân, con cái nếu bắt đầu từ tuổi này trở đi. */
-export const TUOI_TOI_THIEU_HON_NHAN = 18;
+/** Khung tuổi [từ, đến] mà mỗi chủ đề có ý nghĩa; so với tuổi giữa của đại vận. */
+export const KHUNG_TUOI: Record<ChuDe, [number, number]> = {
+  taiLoc: [18, 80],
+  danhLoi: [6, 35],
+  honNhan: [18, 50],
+  conCai: [20, 50],
+};
+
+export function vanHopTuoi(chuDe: ChuDe, tuoiTu: number, tuoiDen: number): boolean {
+  const [tu, den] = KHUNG_TUOI[chuDe];
+  const giua = (tuoiTu + tuoiDen) / 2;
+  return giua >= tu && giua <= den;
+}
 
 const SAO_HON_NHAN_CAN_TRO = ["Thái tuế", "Thiên hình", "Phá toái", "Kiếp sát", "Hóa kỵ", "Tang môn", "Địa kiếp", "Địa không"];
 const SAO_HON_NHAN_KHO = ["Lộc tồn", "Đẩu quân", "Cô thần", "Quả tú", "Thiên hư", "Thiên khốc"];
@@ -197,6 +214,10 @@ export function tamPhuongTuChinh(cungSo: number): number[] {
   return [cungSo, chuyen(6), chuyen(4), chuyen(8)];
 }
 
+function tenSaoTrongCung(diaBan: DiaBan, cungSo: number): Set<string> {
+  return new Set(diaBan.thapNhiCung[cungSo].cungSao.map((s) => s.ten));
+}
+
 function tapSaoTamPhuong(diaBan: DiaBan, cungSo: number): Set<string> {
   const tap = new Set<string>();
   for (const c of tamPhuongTuChinh(cungSo)) {
@@ -210,38 +231,60 @@ function thoaDieuKien(tap: Set<string>, dk: DieuKien): boolean {
   return dem >= (dk.it ?? dk.sao.length);
 }
 
+/** Bộ sao ứng với vận: đủ sao trong tam phương và nhóm sao chủ có mặt ngay cung đại vận. */
+export function boSaoUngVan(q: QuyTacVan, tamPhuong: Set<string>, chinhCung: Set<string>): boolean {
+  const coSaoChuTaiCung = q.dieuKien[0].sao.some((t) => chinhCung.has(t));
+  return coSaoChuTaiCung && q.dieuKien.every((dk) => thoaDieuKien(tamPhuong, dk));
+}
+
 export interface KetQuaVan {
   cungSo: number;
   tenCung: string;
   tuoiTu: number;
   tuoiDen: number;
+  /** Tối đa một mục cho mỗi chủ đề. */
   ketQua: { chuDe: ChuDe; mucDo: MucDoVan; noiDung: string }[];
 }
 
-/**
- * Luận 12 đại vận của lá số, sắp theo tuổi tăng dần.
- * Chủ đề hôn nhân và con cái chỉ được xét với đại vận bắt đầu từ tuổi 18 trở lên.
- */
+/** Gộp các bộ sao cùng chủ đề: tốt trước, xấu/lưu ý sau; có cả hai thì thành mức "lưu ý". */
+function gopTheoChuDe(dsQuyTac: QuyTacVan[]): KetQuaVan["ketQua"] {
+  const thuTu: ChuDe[] = ["taiLoc", "danhLoi", "honNhan", "conCai"];
+  const ketQua: KetQuaVan["ketQua"] = [];
+  for (const chuDe of thuTu) {
+    const cungChuDe = dsQuyTac.filter((q) => q.chuDe === chuDe);
+    if (cungChuDe.length === 0) continue;
+    const tot = cungChuDe.filter((q) => q.mucDo === "cat").map((q) => q.noiDung);
+    const xau = cungChuDe.filter((q) => q.mucDo !== "cat");
+    const mucDo: MucDoVan =
+      xau.length === 0 ? "cat" : tot.length > 0 ? "luuY" : xau.some((q) => q.mucDo === "hung") ? "hung" : "luuY";
+    const phanXau = xau.map((q) => q.noiDung);
+    const noiDung =
+      tot.length > 0 && phanXau.length > 0
+        ? `${tot.join(" ")} Tuy vậy: ${phanXau.join(" ")}`
+        : [...tot, ...phanXau].join(" ");
+    ketQua.push({ chuDe, mucDo, noiDung });
+  }
+  return ketQua;
+}
+
+/** Luận 12 đại vận của lá số, sắp theo tuổi tăng dần. */
 export function luanDaiVan(diaBan: DiaBan): KetQuaVan[] {
   const ketQua: KetQuaVan[] = [];
   for (const cung of diaBan.thapNhiCung.slice(1)) {
     if (cung.cungDaiHan === undefined) continue;
     const tuoiTu = cung.cungDaiHan;
     const tuoiDen = tuoiTu + 9;
-    const tap = tapSaoTamPhuong(diaBan, cung.cungSo);
-    const trongVan: KetQuaVan["ketQua"] = [];
-    for (const q of quyTacVan) {
-      if ((q.chuDe === "honNhan" || q.chuDe === "conCai") && tuoiTu < TUOI_TOI_THIEU_HON_NHAN) continue;
-      if (q.dieuKien.every((dk) => thoaDieuKien(tap, dk))) {
-        trongVan.push({ chuDe: q.chuDe, mucDo: q.mucDo, noiDung: q.noiDung });
-      }
-    }
+    const tamPhuong = tapSaoTamPhuong(diaBan, cung.cungSo);
+    const chinhCung = tenSaoTrongCung(diaBan, cung.cungSo);
+    const ung = quyTacVan.filter(
+      (q) => vanHopTuoi(q.chuDe, tuoiTu, tuoiDen) && boSaoUngVan(q, tamPhuong, chinhCung),
+    );
     ketQua.push({
       cungSo: cung.cungSo,
       tenCung: cung.cungChu ?? cung.cungTen,
       tuoiTu,
       tuoiDen,
-      ketQua: trongVan,
+      ketQua: gopTheoChuDe(ung),
     });
   }
   return ketQua.sort((a, b) => a.tuoiTu - b.tuoiTu);

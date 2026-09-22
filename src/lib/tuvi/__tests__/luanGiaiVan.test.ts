@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { lapLaSo } from "../lapLaSo";
-import { luanDaiVan, quyTacVan, tamPhuongTuChinh, TUOI_TOI_THIEU_HON_NHAN } from "../luanGiaiVan";
+import {
+  boSaoUngVan,
+  luanDaiVan,
+  quyTacVan,
+  tamPhuongTuChinh,
+  vanHopTuoi,
+  type ChuDe,
+} from "../luanGiaiVan";
 import * as saoModule from "../sao";
 
 describe("luanGiaiVan — luận đại vận theo bộ sao trong giáo trình", () => {
@@ -36,14 +43,51 @@ describe("luanGiaiVan — luận đại vận theo bộ sao trong giáo trình",
       expect(cacVan[0].tuoiDen).toBe(11);
     });
 
-    it("không xét hôn nhân, con cái cho đại vận bắt đầu trước 18 tuổi", () => {
-      for (const v of cacVan.filter((x) => x.tuoiTu < TUOI_TOI_THIEU_HON_NHAN)) {
-        expect(v.ketQua.filter((k) => k.chuDe === "honNhan" || k.chuDe === "conCai")).toEqual([]);
-      }
-    });
-
     it("đại vận 2-11 (cung Mệnh) có tín hiệu học vấn, công danh", () => {
       expect(cacVan[0].ketQua.some((k) => k.chuDe === "danhLoi")).toBe(true);
     });
+  });
+
+  describe("khung tuổi theo chủ đề (so với tuổi giữa của vận)", () => {
+    it.each<[ChuDe, number, boolean]>([
+      ["danhLoi", 2, true],
+      ["danhLoi", 32, false],
+      ["danhLoi", 64, false],
+      ["honNhan", 12, false],
+      ["honNhan", 14, true],
+      ["honNhan", 44, true],
+      ["honNhan", 54, false],
+      ["conCai", 14, false],
+      ["taiLoc", 12, false],
+      ["taiLoc", 64, true],
+    ])("%s ở vận bắt đầu %i tuổi: %s", (chuDe, tuoiTu, ky) => {
+      expect(vanHopTuoi(chuDe, tuoiTu, tuoiTu + 9)).toBe(ky);
+    });
+  });
+
+  it("sao chủ của bộ phải nằm ngay cung đại vận, không chỉ ở tam phương", () => {
+    const bo = quyTacVan.find((q) => q.chuDe === "danhLoi")!;
+    const tamPhuong = new Set([
+      "Thiên cơ", "Thái âm", "Thiên đồng", "Hóa khoa", "Hóa quyền", "Hóa lộc", "Quốc ấn",
+    ]);
+    expect(boSaoUngVan(bo, tamPhuong, new Set(["Thiên cơ"]))).toBe(true);
+    expect(boSaoUngVan(bo, tamPhuong, new Set(["Hóa khoa"]))).toBe(false);
+  });
+
+  it("trên nhiều lá số: mỗi vận tối đa 1 mục mỗi chủ đề, không mục nào lệch khung tuổi", () => {
+    for (let nam = 1950; nam <= 2020; nam += 7) {
+      for (const [ngay, thang] of [[3, 2], [17, 6], [28, 11]]) {
+        for (const gioSinh of [1, 4, 7, 10]) {
+          for (const gioiTinh of [1, -1] as const) {
+            const la = lapLaSo({ ngay, thang, nam, gioSinh, gioiTinh });
+            for (const v of luanDaiVan(la.diaBan)) {
+              const cacChuDe = v.ketQua.map((k) => k.chuDe);
+              expect(new Set(cacChuDe).size).toBe(cacChuDe.length);
+              for (const k of v.ketQua) expect(vanHopTuoi(k.chuDe, v.tuoiTu, v.tuoiDen)).toBe(true);
+            }
+          }
+        }
+      }
+    }
   });
 });

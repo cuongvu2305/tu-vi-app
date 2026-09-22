@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { canCuaCung, diaChi, thienCan } from "@/lib/tuvi/canChi";
+import { canCuaCung, diaChi, dichCung, thienCan } from "@/lib/tuvi/canChi";
 import type { CungDiaBan } from "@/lib/tuvi/diaBan";
 import type { LaSoResult } from "@/lib/tuvi/lapLaSo";
 import { nhomSaoLuuTheoCung, tenCanChiNam, tinhSaoLuuNien, tuoiMu } from "@/lib/tuvi/luuNien";
@@ -28,6 +28,18 @@ const viTriLuoi: Record<number, { row: number; col: number }> = {
   1: { row: 4, col: 3 },
   12: { row: 4, col: 4 },
 };
+
+/** Điểm mép ô giữa mà một cung tiếp giáp, theo toạ độ lưới 4x4 (ô giữa chiếm 1..3). */
+function diemTiepGiap(cungSo: number): string {
+  const { row, col } = viTriLuoi[cungSo];
+  const kep = (v: number) => Math.min(3, Math.max(1, v));
+  return `${kep(col - 0.5)},${kep(row - 0.5)}`;
+}
+
+/** Tam giác nối cung Mệnh với hai cung tam hợp (Tài Bạch, Quan Lộc). */
+function tamHopMenh(cungMenh: number): string {
+  return [cungMenh, dichCung(cungMenh, 4), dichCung(cungMenh, 8)].map(diemTiepGiap).join(" ");
+}
 
 /** Màu chữ theo ngũ hành của sao, giống cách lá số truyền thống tô màu. */
 const mauNguHanh: Record<string, string> = {
@@ -195,7 +207,8 @@ export function LaSoGrid({
     <div className="w-full max-w-4xl">
       {/* Bàn cờ 4x4 truyền thống, cuộn ngang trên màn hình hẹp */}
       <div className="overflow-x-auto">
-        <div className="grid min-w-160 grid-cols-4 grid-rows-[repeat(4,minmax(9rem,auto))] gap-px bg-black/15 dark:bg-white/15">
+        {/* 1fr giữ 4 hàng cao bằng nhau để đường tam hợp vẽ theo toạ độ lưới 4x4 đúng vị trí */}
+        <div className="relative grid min-w-160 grid-cols-4 grid-rows-[repeat(4,minmax(9rem,1fr))] gap-px bg-black/15 dark:bg-white/15">
           {cacCung.map((cung) => (
             <button
               key={cung.cungSo}
@@ -217,6 +230,21 @@ export function LaSoGrid({
           >
             <OGiua laSo={laSo} hoTen={hoTen} namXem={namXem} />
           </div>
+
+          <svg
+            aria-hidden
+            viewBox="0 0 4 4"
+            preserveAspectRatio="none"
+            className="pointer-events-none absolute inset-0 h-full w-full text-zinc-400 dark:text-zinc-500"
+          >
+            <polygon
+              points={tamHopMenh(laSo.diaBan.cungMenh)}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1}
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
         </div>
       </div>
 
