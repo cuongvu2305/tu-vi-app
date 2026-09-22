@@ -16,6 +16,8 @@ export interface CungDiaBan {
   cungChu?: string;
   cungDaiHan?: number;
   cungTieuHan?: string;
+  /** Số tháng hạn in ở đáy mỗi cung trên lá số, suy ra từ vị trí tiểu hạn. */
+  cungThangHan?: number;
   tuanTrung?: boolean;
   trietLo?: boolean;
 }
@@ -55,6 +57,8 @@ const maTranDacTinh: Record<number, (string | null)[]> = {
   4: [null, "V", "M", "V", "Đ", "M", "H", "V", "M", "V", "Đ", "M", "H"],
   5: [null, "H", "Đ", "V", "V", "V", "M", "M", "Đ", "H", "H", "H", "H"],
   6: [null, "Đ", "Đ", "H", "M", "M", "V", "Đ", "Đ", "V", "M", "M", "H"],
+  // Thiên phủ (theo giáo trình Đỗ Đức Đạt): miếu Dần/Ngọ/Thân; vượng Tý/Thìn/Tuất/Hợi; đắc Tỵ/Mùi; bình Sửu/Mão/Dậu
+  7: [null, "V", "B", "M", "B", "V", "Đ", "M", "Đ", "M", "B", "V", "V"],
   8: [null, "V", "Đ", "H", "H", "H", "H", "H", "Đ", "V", "M", "M", "M"],
   9: [null, "H", "M", "Đ", "H", "V", "H", "H", "M", "Đ", "H", "V", "H"],
   10: [null, "V", "H", "V", "M", "H", "H", "V", "H", "Đ", "M", "H", "Đ"],
@@ -155,6 +159,7 @@ export class DiaBan {
     for (const cung of this.thapNhiCung.slice(1)) {
       const khoangCach = khoangCachCung(cung.cungSo, viTriCungTy1, gioiTinh);
       cung.cungTieuHan = diaChi[khoangCach + 1].tenChi;
+      cung.cungThangHan = ((12 - khoangCach) % 12) + 1;
     }
     return this;
   }

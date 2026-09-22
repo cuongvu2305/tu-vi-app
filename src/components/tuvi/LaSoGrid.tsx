@@ -1,125 +1,222 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { canCuaCung, diaChi, thienCan } from "@/lib/tuvi/canChi";
 import type { CungDiaBan } from "@/lib/tuvi/diaBan";
 import type { LaSoResult } from "@/lib/tuvi/lapLaSo";
+import { nhomSaoLuuTheoCung, tenCanChiNam, tinhSaoLuuNien, tuoiMu } from "@/lib/tuvi/luuNien";
+import type { Sao } from "@/lib/tuvi/sao";
+import { thongTinLaSo } from "@/lib/tuvi/thongTinLaSo";
+import { danhSachGioSinh } from "@/lib/tuvi/gioSinh";
 import { PalaceDetail } from "./PalaceDetail";
 
 /**
- * Vị trí 12 cung trên lưới 4x4 kiểu bàn cờ cổ điển, đi ngược chiều kim đồng hồ
- * bắt đầu từ Tỵ (góc trên-trái) theo đúng thứ tự Địa Chi Tý..Hợi.
- * Ô giữa (hàng 2-3, cột 2-3) dành cho thông tin bản mệnh.
+ * Vị trí 12 cung trên lưới 4x4 kiểu bàn cờ cổ điển: Tỵ Ngọ Mùi Thân ở hàng trên,
+ * Dần Sửu Tý Hợi ở hàng dưới, ô giữa 2x2 dành cho thông tin lá số.
  */
 const viTriLuoi: Record<number, { row: number; col: number }> = {
-  6: { row: 1, col: 1 }, // Tỵ
-  7: { row: 1, col: 2 }, // Ngọ
-  8: { row: 1, col: 3 }, // Mùi
-  9: { row: 1, col: 4 }, // Thân
-  5: { row: 2, col: 1 }, // Thìn
-  10: { row: 2, col: 4 }, // Dậu
-  4: { row: 3, col: 1 }, // Mão
-  11: { row: 3, col: 4 }, // Tuất
-  3: { row: 4, col: 1 }, // Dần
-  2: { row: 4, col: 2 }, // Sửu
-  1: { row: 4, col: 3 }, // Tý
-  12: { row: 4, col: 4 }, // Hợi
+  6: { row: 1, col: 1 },
+  7: { row: 1, col: 2 },
+  8: { row: 1, col: 3 },
+  9: { row: 1, col: 4 },
+  5: { row: 2, col: 1 },
+  10: { row: 2, col: 4 },
+  4: { row: 3, col: 1 },
+  11: { row: 3, col: 4 },
+  3: { row: 4, col: 1 },
+  2: { row: 4, col: 2 },
+  1: { row: 4, col: 3 },
+  12: { row: 4, col: 4 },
 };
 
-function CungCellContent({ cung }: { cung: CungDiaBan }) {
+/** Màu chữ theo ngũ hành của sao, giống cách lá số truyền thống tô màu. */
+const mauNguHanh: Record<string, string> = {
+  K: "text-slate-500 dark:text-slate-400",
+  M: "text-green-700 dark:text-green-400",
+  T: "text-blue-700 dark:text-blue-400",
+  H: "text-red-600 dark:text-red-400",
+  O: "text-amber-700 dark:text-amber-500",
+};
+
+function tenSaoDayDu(sao: Sao) {
+  return sao.dacTinh ? `${sao.ten}(${sao.dacTinh})` : sao.ten;
+}
+
+interface CungProps {
+  cung: CungDiaBan;
+  canNam: number;
+  saoLuu: { ten: string }[];
+}
+
+function OCung({ cung, canNam, saoLuu }: CungProps) {
   const chinhTinh = cung.cungSao.filter((s) => s.loai === 1);
-  const phuTinh = cung.cungSao.filter((s) => s.loai !== 1);
+  const trangSinh = cung.cungSao.find((s) => s.vongTrangSinh);
+  const phuTinh = cung.cungSao.filter((s) => s.loai !== 1 && !s.vongTrangSinh);
+  const can = thienCan[canCuaCung(canNam, cung.cungSo)];
+
+  // Chia phụ tinh thành 2 cột như lá số giấy: cột trái lấp trước, cột phải phần còn lại.
+  const nua = Math.ceil((phuTinh.length + saoLuu.length) / 2);
+  const cotTrai = phuTinh.slice(0, nua);
+  const cotPhai = [
+    ...phuTinh.slice(nua).map((s) => ({ ten: tenSaoDayDu(s), nguHanh: s.nguHanh, luu: false })),
+    ...saoLuu.map((s) => ({ ten: `L.${s.ten}`, nguHanh: "", luu: true })),
+  ];
+
   return (
-    <>
-      <div className="flex w-full items-center justify-between">
-        <span className="font-semibold text-zinc-800 dark:text-zinc-100">{cung.cungChu}</span>
-        <span className="text-zinc-400">{cung.cungTen}</span>
-      </div>
-      {cung.cungThan && (
-        <span className="text-[9px] font-medium text-amber-600 dark:text-amber-400">Thân cư</span>
-      )}
-      <div className="flex flex-wrap gap-x-1 gap-y-0.5">
-        {chinhTinh.map((s, i) => (
-          <span key={i} className="font-medium text-red-700 dark:text-red-400">
-            {s.ten}
-            {s.dacTinh ? `(${s.dacTinh})` : ""}
+    <div className="flex h-full flex-col justify-between gap-1 p-1 text-[10px] leading-tight sm:text-[11px]">
+      <div>
+        <div className="flex items-baseline justify-between gap-1">
+          <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+            {can.chuCaiDau}.{cung.cungTen}
           </span>
-        ))}
+          <span className="truncate font-bold uppercase tracking-tight text-zinc-900 dark:text-zinc-100">
+            {cung.cungChu}
+            {cung.cungThan && <span className="text-amber-700 dark:text-amber-500"> ‹THÂN›</span>}
+          </span>
+          <span className="font-semibold text-zinc-700 dark:text-zinc-300">{cung.cungDaiHan}</span>
+        </div>
+
+        <div className="mt-0.5 text-center">
+          {chinhTinh.map((s) => (
+            <div key={s.id} className="font-bold text-red-700 dark:text-red-400">
+              {tenSaoDayDu(s)}
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-0.5 flex justify-between gap-1">
+          <div className="flex flex-col">
+            {cotTrai.map((s) => (
+              <span key={s.id} className={mauNguHanh[s.nguHanh]}>
+                {tenSaoDayDu(s)}
+              </span>
+            ))}
+          </div>
+          <div className="flex flex-col text-right">
+            {cotPhai.map((s, i) => (
+              <span
+                key={i}
+                className={s.luu ? "text-zinc-400 dark:text-zinc-500" : mauNguHanh[s.nguHanh]}
+              >
+                {s.ten}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
-      <div className="flex flex-wrap gap-x-1 gap-y-0.5 text-zinc-500 dark:text-zinc-400">
-        {phuTinh.map((s, i) => (
-          <span key={i}>{s.ten}</span>
-        ))}
+
+      <div className="flex items-end justify-between gap-1 text-zinc-500 dark:text-zinc-400">
+        <span className="flex items-center gap-1">
+          {(cung.tuanTrung || cung.trietLo) && (
+            <span className="rounded bg-zinc-800 px-1 text-[9px] font-medium text-white dark:bg-zinc-200 dark:text-zinc-900">
+              {cung.tuanTrung ? "Tuần" : "Triệt"}
+            </span>
+          )}
+          {cung.cungTieuHan}
+        </span>
+        <span className="font-semibold text-zinc-700 dark:text-zinc-300">{trangSinh?.ten}</span>
+        <span>Tháng {cung.cungThangHan}</span>
       </div>
-    </>
+    </div>
   );
 }
 
-function BanMenhInfo({ laSo, hoTen }: { laSo: LaSoResult; hoTen?: string }) {
+function OGiua({
+  laSo,
+  hoTen,
+  namXem,
+}: {
+  laSo: LaSoResult;
+  hoTen?: string;
+  namXem: number;
+}) {
+  const tt = thongTinLaSo(laSo);
+  const gio = danhSachGioSinh.find((g) => g.gio === laSo.chiGio);
+  const canChi = (can: number, chi: number) =>
+    `${thienCan[can].tenCan} ${diaChi[chi].tenChi}`;
+
+  const dong = (nhan: string, giaTri: string, phu?: string) => (
+    <div className="flex gap-2">
+      <span className="w-20 shrink-0 font-medium text-zinc-600 dark:text-zinc-400">{nhan}</span>
+      <span className="flex-1 text-zinc-900 dark:text-zinc-100">{giaTri}</span>
+      {phu && <span className="w-24 shrink-0 text-blue-700 dark:text-blue-400">{phu}</span>}
+    </div>
+  );
+
   return (
-    <>
-      {hoTen && <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">{hoTen}</p>}
-      <p className="text-xs text-zinc-600 dark:text-zinc-400">
-        {laSo.ngayAmLich}/{laSo.thangAmLich}
-        {laSo.thangNhuan ? " (nhuận)" : ""}/{laSo.namAmLich} âm lịch
+    <div className="flex h-full flex-col justify-center gap-1 overflow-auto p-3 text-[11px] sm:text-xs">
+      <p className="mb-1 text-center text-sm font-bold text-zinc-900 dark:text-zinc-50">
+        LÁ SỐ TỬ VI
       </p>
-      <p className="text-xs text-zinc-600 dark:text-zinc-400">Năm {laSo.tenNamAm}</p>
-      <p className="text-xs font-medium text-amber-700 dark:text-amber-400">{laSo.tenCuc}</p>
-      <p className="text-xs text-zinc-600 dark:text-zinc-400">Bản mệnh: {laSo.banMenh}</p>
-    </>
+      {dong("Họ tên:", hoTen || "—")}
+      {dong("Năm:", String(laSo.namDuongLich), laSo.tenNamAm)}
+      {dong(
+        "Tháng:",
+        `${laSo.thangDuongLich} (${laSo.thangAmLich}${laSo.thangNhuan ? " nhuận" : ""})`,
+        canChi(laSo.canThang, laSo.chiThang),
+      )}
+      {dong("Ngày:", `${laSo.ngayDuongLich} (${laSo.ngayAmLich})`, canChi(laSo.canNgay, laSo.chiNgay))}
+      {dong("Giờ:", `${gio?.ten} (${gio?.khung})`, canChi(laSo.canGio, laSo.chiGio))}
+      {dong("Năm xem:", `${namXem} — ${tuoiMu(namXem, laSo.namAmLich)} tuổi`, tenCanChiNam(namXem))}
+      <div className="my-1 border-t border-black/10 dark:border-white/10" />
+      {dong("Âm Dương:", tt.amDuongMenh)}
+      {dong("Mệnh:", laSo.banMenh)}
+      {dong("Cục:", tt.hanhCucDayDu)}
+      {dong("Chủ Mệnh:", tt.chuMenh)}
+      {dong("Chủ Thân:", tt.chuThan)}
+      <div className="mt-1 flex flex-col text-blue-700 dark:text-blue-400">
+        <span>Âm Dương {tt.amDuongThuanLy ? "thuận lý" : "nghịch lý"}</span>
+        <span>{tt.quanHeMenhCuc}</span>
+        <span>Thân cư {tt.thanCu}</span>
+      </div>
+    </div>
   );
 }
 
-export function LaSoGrid({ laSo, hoTen }: { laSo: LaSoResult; hoTen?: string }) {
+export function LaSoGrid({
+  laSo,
+  hoTen,
+  namXem,
+}: {
+  laSo: LaSoResult;
+  hoTen?: string;
+  namXem: number;
+}) {
   const [cungDangChon, setCungDangChon] = useState<number | null>(null);
   const cacCung = laSo.diaBan.thapNhiCung.slice(1);
+  const saoLuuTheoCung = useMemo(() => nhomSaoLuuTheoCung(tinhSaoLuuNien(namXem)), [namXem]);
+
+  const vienCung = (cung: CungDiaBan) =>
+    cung.cungThan
+      ? "border-amber-500 bg-amber-50/60 dark:bg-amber-950/20"
+      : "border-black/15 bg-white dark:border-white/15 dark:bg-white/5";
 
   return (
-    <div className="w-full max-w-3xl">
-      {/* Mobile: danh sách dọc, dễ đọc trên màn hình hẹp */}
-      <div className="flex flex-col gap-2 sm:hidden">
-        <div className="flex flex-col items-center gap-1 rounded-lg border border-black/10 bg-amber-50/60 p-3 text-center dark:border-white/10 dark:bg-white/5">
-          <BanMenhInfo laSo={laSo} hoTen={hoTen} />
-        </div>
-        {cacCung.map((cung) => (
-          <button
-            key={cung.cungSo}
-            onClick={() => setCungDangChon(cung.cungSo)}
-            className={`flex flex-col items-start gap-0.5 rounded-lg border p-2.5 text-left text-xs leading-snug ${
-              cung.cungThan
-                ? "border-amber-500 bg-amber-50 dark:bg-amber-950/30"
-                : "border-black/10 bg-white dark:border-white/10 dark:bg-white/5"
-            }`}
-          >
-            <CungCellContent cung={cung} />
-          </button>
-        ))}
-      </div>
-
-      {/* Từ sm trở lên: bàn cờ 4x4 truyền thống */}
-      <div className="hidden aspect-square grid-cols-4 grid-rows-4 gap-1 sm:grid">
-        {cacCung.map((cung) => {
-          const viTri = viTriLuoi[cung.cungSo];
-          return (
+    <div className="w-full max-w-4xl">
+      {/* Bàn cờ 4x4 truyền thống, cuộn ngang trên màn hình hẹp */}
+      <div className="overflow-x-auto">
+        <div className="grid min-w-160 grid-cols-4 grid-rows-[repeat(4,minmax(9rem,auto))] gap-px bg-black/15 dark:bg-white/15">
+          {cacCung.map((cung) => (
             <button
               key={cung.cungSo}
               onClick={() => setCungDangChon(cung.cungSo)}
-              style={{ gridRow: viTri.row, gridColumn: viTri.col }}
-              className={`flex flex-col items-start gap-0.5 overflow-y-auto rounded-md border p-1.5 text-left text-[10px] leading-tight transition-colors sm:text-xs ${
-                cung.cungThan
-                  ? "border-amber-500 bg-amber-50 dark:bg-amber-950/30"
-                  : "border-black/10 bg-white hover:bg-amber-50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
-              }`}
+              style={{ gridRow: viTriLuoi[cung.cungSo].row, gridColumn: viTriLuoi[cung.cungSo].col }}
+              className={`overflow-hidden border text-left transition-colors hover:brightness-95 ${vienCung(cung)}`}
             >
-              <CungCellContent cung={cung} />
+              <OCung
+                cung={cung}
+                canNam={laSo.canNam}
+                saoLuu={saoLuuTheoCung[cung.cungSo] ?? []}
+              />
             </button>
-          );
-        })}
+          ))}
 
-        <div
-          style={{ gridRow: "2 / span 2", gridColumn: "2 / span 2" }}
-          className="flex flex-col items-center justify-center gap-1 rounded-md border border-black/10 bg-amber-50/60 p-3 text-center dark:border-white/10 dark:bg-white/5"
-        >
-          <BanMenhInfo laSo={laSo} hoTen={hoTen} />
+          <div
+            style={{ gridRow: "2 / span 2", gridColumn: "2 / span 2" }}
+            className="border border-black/15 bg-amber-50/40 dark:border-white/15 dark:bg-white/5"
+          >
+            <OGiua laSo={laSo} hoTen={hoTen} namXem={namXem} />
+          </div>
         </div>
       </div>
 

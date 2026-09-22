@@ -8,6 +8,8 @@ import { jdFromDate, lunarToSolar, solarToLunar } from "./lich";
 export interface ThienCan {
   id: number;
   tenCan: string | null;
+  /** Chữ cái viết tắt dùng trên lá số, ví dụ "Á.Dậu" = cung Dậu can Ất. */
+  chuCaiDau: string | null;
   nguHanh: "K" | "M" | "T" | "H" | "O" | null;
   vitriDiaBan: number | null;
   amDuong: 1 | -1 | null;
@@ -15,17 +17,17 @@ export interface ThienCan {
 
 /** index 0 unused, 1..10 = Giáp..Quý */
 export const thienCan: ThienCan[] = [
-  { id: 0, tenCan: null, nguHanh: null, vitriDiaBan: null, amDuong: null },
-  { id: 1, tenCan: "Giáp", nguHanh: "M", vitriDiaBan: 3, amDuong: 1 },
-  { id: 2, tenCan: "Ất", nguHanh: "M", vitriDiaBan: 4, amDuong: -1 },
-  { id: 3, tenCan: "Bính", nguHanh: "H", vitriDiaBan: 6, amDuong: 1 },
-  { id: 4, tenCan: "Đinh", nguHanh: "H", vitriDiaBan: 7, amDuong: -1 },
-  { id: 5, tenCan: "Mậu", nguHanh: "O", vitriDiaBan: 6, amDuong: 1 },
-  { id: 6, tenCan: "Kỷ", nguHanh: "O", vitriDiaBan: 7, amDuong: -1 },
-  { id: 7, tenCan: "Canh", nguHanh: "K", vitriDiaBan: 9, amDuong: 1 },
-  { id: 8, tenCan: "Tân", nguHanh: "K", vitriDiaBan: 10, amDuong: -1 },
-  { id: 9, tenCan: "Nhâm", nguHanh: "T", vitriDiaBan: 12, amDuong: 1 },
-  { id: 10, tenCan: "Quý", nguHanh: "T", vitriDiaBan: 1, amDuong: -1 },
+  { id: 0, tenCan: null, chuCaiDau: null, nguHanh: null, vitriDiaBan: null, amDuong: null },
+  { id: 1, tenCan: "Giáp", chuCaiDau: "G", nguHanh: "M", vitriDiaBan: 3, amDuong: 1 },
+  { id: 2, tenCan: "Ất", chuCaiDau: "Á", nguHanh: "M", vitriDiaBan: 4, amDuong: -1 },
+  { id: 3, tenCan: "Bính", chuCaiDau: "B", nguHanh: "H", vitriDiaBan: 6, amDuong: 1 },
+  { id: 4, tenCan: "Đinh", chuCaiDau: "Đ", nguHanh: "H", vitriDiaBan: 7, amDuong: -1 },
+  { id: 5, tenCan: "Mậu", chuCaiDau: "M", nguHanh: "O", vitriDiaBan: 6, amDuong: 1 },
+  { id: 6, tenCan: "Kỷ", chuCaiDau: "K", nguHanh: "O", vitriDiaBan: 7, amDuong: -1 },
+  { id: 7, tenCan: "Canh", chuCaiDau: "C", nguHanh: "K", vitriDiaBan: 9, amDuong: 1 },
+  { id: 8, tenCan: "Tân", chuCaiDau: "T", nguHanh: "K", vitriDiaBan: 10, amDuong: -1 },
+  { id: 9, tenCan: "Nhâm", chuCaiDau: "N", nguHanh: "T", vitriDiaBan: 12, amDuong: 1 },
+  { id: 10, tenCan: "Quý", chuCaiDau: "Q", nguHanh: "T", vitriDiaBan: 1, amDuong: -1 },
 ];
 
 export interface DiaChi {
@@ -133,6 +135,31 @@ export function ngayThangNamCanChi(
   const canNamSinh = ((nnam + 6) % 10) + 1;
   const chiNam = ((nnam + 8) % 12) + 1;
   return [canThang, canNamSinh, chiNam];
+}
+
+/**
+ * Can của cung Dần theo Ngũ Hổ Độn: Giáp/Kỷ niên khởi Bính Dần, Ất/Canh khởi Mậu Dần,
+ * Bính/Tân khởi Canh Dần, Đinh/Nhâm khởi Nhâm Dần, Mậu/Quý khởi Giáp Dần.
+ */
+function canCungDan(canNam: number): number {
+  return ((((canNam - 1) % 5) * 2 + 3 - 1) % 10) + 1;
+}
+
+/** Can gán cho một cung địa bàn (đếm thuận từ cung Dần). */
+export function canCuaCung(canNam: number, chiCung: number): number {
+  const buoc = (((chiCung - 3) % 12) + 12) % 12;
+  return ((canCungDan(canNam) - 1 + buoc) % 10) + 1;
+}
+
+/** Chi của tháng âm lịch: tháng Giêng là Dần. */
+export function chiCuaThang(thangAmLich: number): number {
+  return ((thangAmLich + 1) % 12) + 1;
+}
+
+/** Can của giờ, suy từ can ngày: Giáp/Kỷ nhật khởi Giáp Tý, Ất/Canh khởi Bính Tý... */
+export function canCuaGio(canNgay: number, chiGio: number): number {
+  const canGioTy = (((canNgay - 1) % 5) * 2) % 10;
+  return ((canGioTy + chiGio - 1) % 10) + 1;
 }
 
 export interface NguHanhInfo {

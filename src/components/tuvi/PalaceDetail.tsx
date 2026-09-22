@@ -2,11 +2,13 @@
 
 import type { CungDiaBan } from "@/lib/tuvi/diaBan";
 import { luanGiaiChinhTinh, moTaDacTinh, yNghiaCung } from "@/lib/tuvi/luanGiai";
+import { danhGiaCung } from "@/lib/tuvi/luanGiaiCung";
 
 export function PalaceDetail({ cung, onClose }: { cung: CungDiaBan; onClose: () => void }) {
   const chinhTinh = cung.cungSao.filter((s) => s.loai === 1);
   const phuTinh = cung.cungSao.filter((s) => s.loai !== 1);
   const tenCung = cung.cungChu ?? cung.cungTen;
+  const danhGia = danhGiaCung(cung, tenCung);
 
   return (
     <div
@@ -38,6 +40,33 @@ export function PalaceDetail({ cung, onClose }: { cung: CungDiaBan; onClose: () 
 
         {yNghiaCung[tenCung] && (
           <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">{yNghiaCung[tenCung]}</p>
+        )}
+
+        {danhGia && (danhGia.cat.length > 0 || danhGia.hung.length > 0 || danhGia.ghiChu.length > 0) && (
+          <div className="mb-4 flex flex-col gap-2 rounded-lg bg-amber-50/70 p-3 text-sm dark:bg-white/5">
+            <p className="font-medium text-zinc-800 dark:text-zinc-100">Luận giải theo giáo trình</p>
+            {danhGia.cat.length > 0 && (
+              <ul className="list-disc pl-5 text-emerald-700 dark:text-emerald-400">
+                {danhGia.cat.map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
+              </ul>
+            )}
+            {danhGia.hung.length > 0 && (
+              <ul className="list-disc pl-5 text-red-600 dark:text-red-400">
+                {danhGia.hung.map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
+              </ul>
+            )}
+            {danhGia.ghiChu.length > 0 && (
+              <ul className="list-disc pl-5 text-zinc-700 dark:text-zinc-300">
+                {danhGia.ghiChu.map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
 
         {chinhTinh.length > 0 ? (
@@ -86,6 +115,14 @@ export function PalaceDetail({ cung, onClose }: { cung: CungDiaBan; onClose: () 
               ))}
             </div>
           </div>
+        )}
+
+        {danhGia && danhGia.luuY.length > 0 && (
+          <ul className="mt-3 list-disc pl-5 text-xs text-zinc-500">
+            {danhGia.luuY.map((t) => (
+              <li key={t}>{t}</li>
+            ))}
+          </ul>
         )}
 
         {(cung.tuanTrung || cung.trietLo) && (

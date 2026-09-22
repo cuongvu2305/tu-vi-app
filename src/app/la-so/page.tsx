@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { DaiVanPanel } from "@/components/tuvi/DaiVanPanel";
 import { LaSoGrid } from "@/components/tuvi/LaSoGrid";
 import { lapLaSo } from "@/lib/tuvi/lapLaSo";
 import { luuLichSu } from "@/lib/tuvi/lichSu";
@@ -24,6 +25,7 @@ function LaSoContent() {
   const gio = Number(searchParams.get("gio") ?? "7");
   const gioiTinh = searchParams.get("gioiTinh") === "-1" ? -1 : 1;
   const hoTen = searchParams.get("ten") ?? undefined;
+  const [namXem, setNamXem] = useState(() => new Date().getFullYear());
 
   const laSo = useMemo(() => {
     if (!ngay || !thang || !nam) return null;
@@ -65,11 +67,26 @@ function LaSoContent() {
           Lập lá số khác
         </Link>
       </div>
-      <p className="text-xs text-zinc-500">
-        Chạm vào từng cung để xem luận giải chi tiết. (M) Miếu, (V) Vượng, (Đ) Đắc, (B) Bình, (H)
-        Hãm.
-      </p>
-      <LaSoGrid laSo={laSo} hoTen={hoTen} />
+      <div className="flex w-full max-w-4xl flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-zinc-500">
+          Chạm vào từng cung để xem luận giải. (M) Miếu, (V) Vượng, (Đ) Đắc, (B) Bình, (H) Hãm —
+          sao chữ xám có tiền tố <span className="font-medium">L.</span> là sao lưu niên của năm
+          xem.
+        </p>
+        <label className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">
+          Năm xem hạn
+          <input
+            type="number"
+            value={namXem}
+            min={laSo.namAmLich}
+            max={laSo.namAmLich + 120}
+            onChange={(e) => setNamXem(Number(e.target.value))}
+            className="w-24 rounded-md border border-black/15 bg-white px-2 py-1 text-sm dark:border-white/15 dark:bg-black/30"
+          />
+        </label>
+      </div>
+      <LaSoGrid laSo={laSo} hoTen={hoTen} namXem={namXem} />
+      <DaiVanPanel laSo={laSo} namXem={namXem} />
     </div>
   );
 }

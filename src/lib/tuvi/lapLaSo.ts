@@ -4,6 +4,9 @@
  * https://github.com/doanguyen/lasotuvi
  */
 import {
+  canChiNgay,
+  canCuaGio,
+  chiCuaThang,
   dichCung,
   ngayThangNam,
   ngayThangNamCanChi,
@@ -41,15 +44,30 @@ export interface LapLaSoInput {
 export interface LaSoResult {
   diaBan: DiaBan;
   cucSo: number;
+  /** Hành của Cục: K/M/T/H/O */
+  hanhCuc: string;
   tenCuc: string;
   banMenh: string;
+  /** Hành nạp âm của bản mệnh: K/M/T/H/O */
+  hanhBanMenh: string;
   canNam: number;
   chiNam: number;
   tenNamAm: string;
+  canThang: number;
+  chiThang: number;
+  canNgay: number;
+  chiNgay: number;
+  canGio: number;
+  chiGio: number;
   ngayAmLich: number;
   thangAmLich: number;
   namAmLich: number;
   thangNhuan: boolean;
+  /** Ngày tháng năm dương lịch đã nhập, giữ lại để hiển thị trên lá số. */
+  ngayDuongLich: number;
+  thangDuongLich: number;
+  namDuongLich: number;
+  gioiTinh: 1 | -1;
 }
 
 export function lapLaSo(input: LapLaSoInput): LaSoResult {
@@ -65,7 +83,8 @@ export function lapLaSo(input: LapLaSoInput): LaSoResult {
   if (duongLich) {
     [nn, tt, nnnn, thangNhuan] = ngayThangNam(nn, tt, nnnn, true, timeZone);
   }
-  const [, canNam, chiNam] = ngayThangNamCanChi(nn, tt, nnnn, false, timeZone);
+  const [canThang, canNam, chiNam] = ngayThangNamCanChi(nn, tt, nnnn, false, timeZone);
+  const [canNgay, chiNgay] = canChiNgay(nn, tt, nnnn, false, timeZone, thangNhuan);
 
   const diaBan = new DiaBan(tt, gioSinh);
 
@@ -355,14 +374,26 @@ export function lapLaSo(input: LapLaSoInput): LaSoResult {
   return {
     diaBan,
     cucSo,
+    hanhCuc,
     tenCuc: cuc.tenCuc,
     banMenh: nguHanhNapAm(chiNam, canNam, true),
+    hanhBanMenh: nguHanhNapAm(chiNam, canNam),
     canNam,
     chiNam,
     tenNamAm: `${thienCan[canNam].tenCan} ${diaChi[chiNam].tenChi}`,
+    canThang,
+    chiThang: chiCuaThang(tt),
+    canNgay,
+    chiNgay,
+    canGio: canCuaGio(canNgay, gioSinh),
+    chiGio: gioSinh,
     ngayAmLich: nn,
     thangAmLich: tt,
     namAmLich: nnnn,
     thangNhuan: thangNhuan === 1,
+    ngayDuongLich: input.ngay,
+    thangDuongLich: input.thang,
+    namDuongLich: input.nam,
+    gioiTinh,
   };
 }
